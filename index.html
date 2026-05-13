@@ -5,35 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel Administrativo - ENEE</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0b1622; color: white; margin: 0; padding: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0b1622; color: white; margin: 0; padding: 20px; }
         .admin-container { max-width: 1200px; margin: auto; text-align: center; }
-        
         .logo-admin { width: 180px; margin-bottom: 20px; }
         h2 { color: #f1c40f; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 30px; }
-
-        /* Estilo de la Tabla */
-        .tabla-contenedor {
-            background: white;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
+        .tabla-contenedor { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         table { width: 100%; border-collapse: collapse; color: #333; }
         thead { background: #1c2833; color: #f1c40f; }
-        th { padding: 15px; font-size: 0.9rem; text-transform: uppercase; }
+        th { padding: 15px; font-size: 0.85rem; text-transform: uppercase; }
         td { padding: 12px; border-bottom: 1px solid #eee; font-size: 0.9rem; text-align: center; }
         tr:hover { background-color: #f9f9f9; }
-
         .btn-ver { color: #2980b9; text-decoration: none; font-weight: bold; }
-        .btn-ver:hover { text-decoration: underline; }
-        
         .loader { color: #f1c40f; margin: 20px; display: block; }
     </style>
 </head>
 <body>
 
 <div class="admin-container">
+    <!-- Logo Corregido -->
     <img src="https://raw.githubusercontent.com/proyectosjdop-alfa/app_poda/refs/heads/main/imagenes/enee_logo.png" class="logo-admin" alt="ENEE">
+    
     <h2>Panel de Control Central</h2>
 
     <div class="tabla-contenedor">
@@ -50,7 +41,7 @@
                 </tr>
             </thead>
             <tbody id="admin-tbody">
-                <!-- Los datos se cargarán aquí -->
+                <!-- Se llena dinámicamente -->
             </tbody>
         </table>
         <div id="loading-msg" class="loader">Cargando registros...</div>
@@ -68,20 +59,20 @@
             const loader = document.getElementById('loading-msg');
             
             tbody.innerHTML = "";
-            loader.style.display = "none";
+            if(loader) loader.style.display = "none";
 
-            // Ordenar por fecha (más reciente primero)
+            // Usamos los nombres exactos que definiste en el Worker
             datos.reverse().forEach(reg => {
                 const fila = `
                     <tr>
-                        <td>${reg.fecha || '---'}</td>
+                        <td>${reg.fecha_trabajo || '---'}</td>
                         <td><b>${reg.sector || '---'}</b></td>
                         <td>${reg.circuito || '---'}</td>
-                        <td>${reg.brecha || '0'}m</td>
-                        <td>${reg.poda || '0'}m</td>
+                        <td>${reg.m_brecha || '0'}m</td>
+                        <td>${reg.m_poda || '0'}m</td>
                         <td>L. ${reg.pago_mo || '0'}</td>
                         <td>
-                            <a href="https://www.google.com/maps?q=${reg.gps_ini}" 
+                            <a href="https://www.google.com/maps?q=${reg.gps_inicio}" 
                                target="_blank" class="btn-ver">📍 Ver Mapa</a>
                         </td>
                     </tr>
@@ -90,11 +81,12 @@
             });
         } catch (error) {
             console.error("Error cargando datos:", error);
-            document.getElementById('loading-msg').innerText = "Error al conectar con la base de datos.";
+            if(document.getElementById('loading-msg')) {
+                document.getElementById('loading-msg').innerText = "Error de conexión con la base de datos.";
+            }
         }
     }
 
-    // Cargar al iniciar
     window.onload = cargarDatosAdmin;
 </script>
 
