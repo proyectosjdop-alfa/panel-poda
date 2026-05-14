@@ -3,92 +3,197 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Administrativo - ENEE</title>
+    <title>Panel Administrativo UTCD - ENEE</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0b1622; color: white; margin: 0; padding: 20px; }
-        .admin-container { max-width: 1200px; margin: auto; text-align: center; }
-        .logo-admin { width: 180px; margin-bottom: 20px; }
-        h2 { color: #f1c40f; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 30px; }
-        .tabla-contenedor { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        table { width: 100%; border-collapse: collapse; color: #333; }
-        thead { background: #1c2833; color: #f1c40f; }
-        th { padding: 15px; font-size: 0.85rem; text-transform: uppercase; }
-        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 0.9rem; text-align: center; }
-        tr:hover { background-color: #f9f9f9; }
-        .btn-ver { color: #2980b9; text-decoration: none; font-weight: bold; }
-        .loader { color: #f1c40f; margin: 20px; display: block; }
+        :root { --bg-dark: #0f172a; --card-bg: #1e293b; --accent: #38bdf8; --enee-yellow: #f1c40f; --success: #22c55e; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-dark); color: white; margin: 0; padding: 20px; }
+        
+        /* Login */
+        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-dark); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .login-box { background: var(--card-bg); padding: 40px; border-radius: 15px; text-align: center; width: 380px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        .login-box select, .login-box input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; }
+        
+        .logo-bg { background: white; padding: 12px; border-radius: 10px; display: inline-block; margin-bottom: 15px; }
+        .logo-bg img { height: 65px; display: block; }
+        
+        /* Layout */
+        .header-container { text-align: center; margin-bottom: 30px; }
+        .header-container img { height: 100px; background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
+
+        /* Indicadores */
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .metric-card { background: var(--card-bg); padding: 15px; border-radius: 12px; border-left: 5px solid var(--accent); }
+        .metric-card h4 { margin: 0; font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; }
+        .metric-card p { margin: 8px 0 0; font-size: 1.3rem; font-weight: bold; color: var(--enee-yellow); }
+
+        .btn-excel { background: #166534; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; margin: 0 auto 20px auto; transition: 0.3s; }
+        
+        /* Tabla */
+        .table-container { background: var(--card-bg); border-radius: 12px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+        th { padding: 15px; background: #334155; color: var(--accent); font-size: 0.75rem; text-transform: uppercase; }
+        td { padding: 12px; border-bottom: 1px solid #334155; font-size: 0.8rem; text-align: center; }
+        
+        .status-locked { background: var(--success); color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; display: inline-block; }
+        .btn-pdf { background: #ef4444; color: white; padding: 6px 10px; border-radius: 5px; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; font-size: 0.75rem; }
+        .btn-map { color: var(--enee-yellow); cursor: pointer; text-decoration: none; }
     </style>
 </head>
 <body>
 
-<div class="admin-container">
-    <!-- Logo Corregido -->
-    <img src="https://raw.githubusercontent.com/proyectosjdop-alfa/app_poda/refs/heads/main/imagenes/enee_logo.png" class="logo-admin" alt="ENEE">
-    
-    <h2>Panel de Control Central</h2>
+<div id="login-overlay">
+    <div class="login-box">
+        <div class="logo-bg"><img src="https://raw.githubusercontent.com/proyectosjdop-alfa/panel-poda/main/imagenes/UTCD%20Vertical.png"></div>
+        <h3 style="color:var(--enee-yellow)">Panel de Control UTCD</h3>
+        <select id="select-sector">
+            <option value="">SELECCIONE SECTOR</option>
+            <option value="ADMIN">ADMIN CENTRAL</option>
+            <option value="CHOLUTECA">CHOLUTECA</option>
+            <option value="TEGUCIGALPA">TEGUCIGALPA</option>
+            <option value="DANLI">DANLI</option>
+            <option value="EL PROGRESO">EL PROGRESO</option>
+            <option value="SANTA CRUZ DE YOJOA">SANTA CRUZ DE YOJOA</option>
+            <option value="LA CEIBA">LA CEIBA</option>
+            <option value="TOCOA">TOCOA</option>
+            <option value="COMAYAGUA">COMAYAGUA</option>
+            <option value="JUTICALPA">JUTICALPA</option>
+            <option value="SAN PEDRO SULA">SAN PEDRO SULA</option>
+            <option value="SANTA ROSA DE COPAN">SANTA ROSA DE COPAN</option>
+            <option value="GUANAJA">GUANAJA</option>
+            <option value="BRUS LAGUNA">BRUS LAGUNA</option>
+            <option value="SANTA BARBARA">SANTA BARBARA</option>
+        </select>
+        <input type="password" id="pass-sector" placeholder="Contraseña">
+        <button onclick="validarAcceso()" style="width:100%; padding:12px; background:var(--accent); border:none; border-radius:8px; font-weight:bold; cursor:pointer;">INGRESAR</button>
+    </div>
+</div>
 
-    <div class="tabla-contenedor">
+<div id="admin-content" style="display:none">
+    <div class="header-container">
+        <img src="https://raw.githubusercontent.com/proyectosjdop-alfa/panel-poda/refs/heads/main/imagenes/UTCD%20Vertical%20.png">
+        <h2 id="titulo-sector" style="color:var(--enee-yellow); margin:0;">SECTOR: ---</h2>
+    </div>
+
+    <button class="btn-excel" onclick="exportarExcel()"><i class="fas fa-file-excel"></i> Descargar Reporte Excel</button>
+
+    <div class="metrics-grid">
+        <div class="metric-card"><h4>Total Reportes</h4><p id="m-total">0</p></div>
+        <div class="metric-card" style="border-left-color:#22c55e"><h4>Inversión Total</h4><p id="m-pago">L. 0</p></div>
+        <div class="metric-card" style="border-left-color:#f59e0b"><h4>Metros Poda</h4><p id="m-poda">0 m</p></div>
+        <div class="metric-card" style="border-left-color:#a855f7"><h4>Metros Brecha</h4><p id="m-brecha">0 m</p></div>
+        <div class="metric-card" style="border-left-color:#38bdf8"><h4>Postes</h4><p id="m-postes">0</p></div>
+    </div>
+
+    <div class="table-container">
         <table>
             <thead>
                 <tr>
-                    <th>Fecha Reg.</th>
-                    <th>Sector</th>
-                    <th>Circuito</th>
-                    <th>M. Brecha</th>
-                    <th>M. Poda</th>
-                    <th>Pago MO</th>
-                    <th>Mapa</th>
+                    <th>Fecha</th>
+                    <th>Circuito / Zona</th>
+                    <th>Responsables</th>
+                    <th>Avance (B/P)</th>
+                    <th>Postes</th>
+                    <th>Pago Total</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
                 </tr>
             </thead>
-            <tbody id="admin-tbody">
-                <!-- Se llena dinámicamente -->
-            </tbody>
+            <tbody id="admin-tbody"></tbody>
         </table>
-        <div id="loading-msg" class="loader">Cargando registros...</div>
     </div>
 </div>
 
 <script>
     const API_URL = "https://api-poda.proyectos-jdop.workers.dev/";
+    const R2_URL = "https://pub-f6627390deb6468ebff804345d5e647a.r2.dev/"; 
+    let sectorSesion = "";
+    let datosFiltrados = [];
 
-    async function cargarDatosAdmin() {
-        try {
-            const response = await fetch(API_URL);
-            const datos = await response.json();
-            const tbody = document.getElementById('admin-tbody');
-            const loader = document.getElementById('loading-msg');
-            
-            tbody.innerHTML = "";
-            if(loader) loader.style.display = "none";
+    function validarAcceso() {
+        const s = document.getElementById('select-sector').value;
+        const p = document.getElementById('pass-sector').value;
+        if (s && p === "enee2026") {
+            sectorSesion = s;
+            document.getElementById('login-overlay').style.display = "none";
+            document.getElementById('admin-content').style.display = "block";
+            document.getElementById('titulo-sector').innerText = `SECTOR: ${s}`;
+            cargarDatos();
+        } else { alert("Acceso denegado"); }
+    }
 
-            // Usamos los nombres exactos que definiste en el Worker
-            datos.reverse().forEach(reg => {
-                const fila = `
-                    <tr>
-                        <td>${reg.fecha_trabajo || '---'}</td>
-                        <td><b>${reg.sector || '---'}</b></td>
-                        <td>${reg.circuito || '---'}</td>
-                        <td>${reg.m_brecha || '0'}m</td>
-                        <td>${reg.m_poda || '0'}m</td>
-                        <td>L. ${reg.pago_mo || '0'}</td>
-                        <td>
-                            <a href="https://www.google.com/maps?q=${reg.gps_inicio}" 
-                               target="_blank" class="btn-ver">📍 Ver Mapa</a>
-                        </td>
-                    </tr>
-                `;
-                tbody.innerHTML += fila;
-            });
-        } catch (error) {
-            console.error("Error cargando datos:", error);
-            if(document.getElementById('loading-msg')) {
-                document.getElementById('loading-msg').innerText = "Error de conexión con la base de datos.";
+    async function cargarDatos() {
+        const res = await fetch(API_URL);
+        const datos = await res.json();
+        const tbody = document.getElementById('admin-tbody');
+        tbody.innerHTML = "";
+        
+        let [iT, iP, iB, iPostes] = [0, 0, 0, 0];
+        datosFiltrados = sectorSesion === "ADMIN" ? datos : datos.filter(d => d.sector === sectorSesion);
+
+        datosFiltrados.reverse().forEach(reg => {
+            const totalRow = Number(reg.pago_mo || 0) + Number(reg.pago_transporte || 0);
+            iT += totalRow; iP += Number(reg.m_poda || 0); iB += Number(reg.m_brecha || 0); iPostes += Number(reg.m_postes || 0);
+
+            // Mapa con chincheta (Punto A y Punto B)
+            const urlMapa = `https://www.google.com/maps/dir/${reg.gps_inicio.trim()}/${reg.gps_final.trim()}`;
+
+            tbody.innerHTML += `
+                <tr>
+                    <td>${reg.fecha_trabajo}</td>
+                    <td><b>${reg.circuito}</b><br><small>${reg.zona}</small></td>
+                    <td><small>S: ${reg.responsable_supervision || '---'}</small><br><small>C: ${reg.responsable_contratista || '---'}</small></td>
+                    <td>B: ${reg.m_brecha}m | P: ${reg.m_poda}m</td>
+                    <td>${reg.m_postes || 0}</td>
+                    <td style="color:var(--success); font-weight:bold">L. ${totalRow.toLocaleString()}</td>
+                    <td>
+                        <select onchange="cambiarEstado(this)" style="background:#0f172a; color:white; border:1px solid var(--accent); padding:4px; border-radius:4px;">
+                            <option value="Generado">Generado</option>
+                            <option value="Enviado">Enviado</option>
+                        </select>
+                    </td>
+                    <td>
+                        <div style="display:flex; gap:15px; justify-content:center; align-items:center;">
+                            <a href="${urlMapa}" target="_blank" class="btn-map" title="Ver Trayecto">
+                                <i class="fas fa-map-marker-alt fa-2x"></i>
+                            </a>
+                            <a href="${R2_URL}Informe_${reg.sector}_${reg.id}.pdf" target="_blank" class="btn-pdf">
+                                <i class="fas fa-file-pdf"></i> PDF
+                            </a>
+                        </div>
+                    </td>
+                </tr>`;
+        });
+
+        actualizarIndicadores(datosFiltrados.length, iT, iP, iB, iPostes);
+    }
+
+    function cambiarEstado(el) {
+        if(el.value === 'Enviado') {
+            if(confirm("¿Confirmar envío? Una vez enviado no podrá regresar al estado anterior.")) {
+                el.parentElement.innerHTML = '<span class="status-locked">ENVIADO</span>';
+            } else {
+                el.value = 'Generado';
             }
         }
     }
 
-    window.onload = cargarDatosAdmin;
-</script>
+    function actualizarIndicadores(tot, pag, pod, bre, pos) {
+        document.getElementById('m-total').innerText = tot;
+        document.getElementById('m-pago').innerText = `L. ${pag.toLocaleString()}`;
+        document.getElementById('m-poda').innerText = `${pod.toLocaleString()} m`;
+        document.getElementById('m-brecha').innerText = `${bre.toLocaleString()} m`;
+        document.getElementById('m-postes').innerText = pos;
+    }
 
+    function exportarExcel() {
+        if (datosFiltrados.length === 0) return alert("Sin datos");
+        const worksheet = XLSX.utils.json_to_sheet(datosFiltrados);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Reporte");
+        XLSX.writeFile(workbook, `Reporte_Poda_${sectorSesion}.xlsx`);
+    }
+</script>
 </body>
 </html>
