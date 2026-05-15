@@ -144,32 +144,31 @@
             const circuitoLink = reg.circuito.replace(/\s+/g, "_");
             const nombreArchivo = `Informe_${reg.sector}_${fechaLink}_${circuitoLink}.pdf`;
             
-            tbody.innerHTML += `
-                <tr>
-                    <td>${reg.fecha_trabajo}</td>
-                    <td><b>${reg.circuito}</b><br><small>${reg.zona}</small></td>
-                    <td><small>S: ${reg.responsable_supervision || '---'}</small><br><small>C: ${reg.responsable_contratista || '---'}</small></td>
-                    <td>B: ${reg.m_brecha}m | P: ${reg.m_poda}m</td>
-                    <td>${reg.m_postes || 0}</td>
-                    <td style="color:var(--success); font-weight:bold">L. ${totalRow.toLocaleString()}</td>
-                    <td>
-                        <select onchange="cambiarEstado(this)" style="background:#0f172a; color:white; border:1px solid var(--accent); padding:4px; border-radius:4px;">
-                            <option value="Generado">Generado</option>
-                            <option value="Enviado">Enviado</option>
-                        </select>
-                    </td>
-                    <td>
-                        <div style="display:flex; gap:15px; justify-content:center; align-items:center;">
-                            <a href="${urlMapa}" target="_blank" class="btn-map" title="Ver Trayecto">
-                                <i class="fas fa-map-marker-alt fa-2x"></i>
-                            </a>
-                            <a href="${R2_URL}Informe_${reg.sector}_${reg.id}.pdf" target="_blank" class="btn-pdf">
-                                <i class="fas fa-file-pdf"></i> PDF
-                            </a>
-                        </div>
-                    </td>
-                </tr>`;
-        });
+          tbody.innerHTML += `
+               <tr>
+                <td>${reg.fecha_trabajo}</td>
+                <td><b>${reg.circuito}</b><br><small>${reg.zona}</small></td>
+                <td><small>S: ${reg.responsable_supervision || '---'}</small><br><small>C: ${reg.responsable_contratista || '---'}</small></td>
+                <td>B: ${reg.m_brecha}m | P: ${reg.m_poda}m</td>
+                <td>${reg.m_postes || 0}</td>
+                <td style="color:var(--success); font-weight:bold">L. ${totalRow.toLocaleString()}</td>
+                <td>
+                    <select onchange="cambiarEstado(this)" style="background:#0f172a; color:white; border:1px solid var(--accent); padding:4px; border-radius:4px;">
+                        <option value="Generado">Generado</option>
+                        <option value="Enviado">Enviado</option>
+                    </select>
+                </td>
+                <td>
+                    <div style="display:flex; gap:15px; justify-content:center; align-items:center;">
+                        <a href="${urlMapa}" target="_blank" class="btn-map" title="Ver Trayecto">
+                            <i class="fas fa-map-marker-alt fa-2x"></i>
+                        </a>
+                        <a href="${R2_URL}${nombreArchivo}" target="_blank" class="btn-pdf">
+                    <i class="fas fa-file-pdf"></i> PDF
+                </a>
+            </div>
+        </td>
+    </tr>`;
 
         actualizarIndicadores(datosFiltrados.length, iT, iP, iB, iPostes);
     }
