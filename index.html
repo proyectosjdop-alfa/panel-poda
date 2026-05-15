@@ -79,7 +79,7 @@
         <table>
             <thead>
                 <tr>
-                    <th>Fecha</th>
+                    <th>Fecha / ENERGIS</th>
                     <th>Circuito / Zona</th>
                     <th>Responsables</th>
                     <th>Avance (B/P)</th>
@@ -96,6 +96,7 @@
 
 <script>
     const API_URL = "https://api-poda.proyectos-jdop.workers.dev/";
+    // URL Pública de R2 actualizada
     const R2_URL = "https://pub-f6627390deb6468ebff804345d5e647a.r2.dev/"; 
     let sectorSesion = "";
     let datosFiltrados = [];
@@ -120,23 +121,29 @@
             tbody.innerHTML = "";
             
             let [iT, iP, iB, iPostes] = [0, 0, 0, 0];
-            datosFiltrados = sectorSesion === "ADMIN" ? datos : datos.filter(d => d.sector === sectorSesion);
+            datosFiltrados = sectorSesion === "ADMIN" ? datos : datos.filter(d => d.sector.toUpperCase() === sectorSesion.toUpperCase());
 
             datosFiltrados.reverse().forEach(reg => {
                 const totalRow = Number(reg.pago_mo || 0) + Number(reg.pago_transporte || 0);
                 iT += totalRow; iP += Number(reg.m_poda || 0); iB += Number(reg.m_brecha || 0); iPostes += Number(reg.m_postes || 0);
 
-                // Nombre de archivo consistente con app.js
-                const fechaLink = reg.fecha_trabajo.replace(/-/g, ""); 
-                const circuitoLink = reg.circuito.replace(/\s+/g, "_");
-                const nombreArchivo = `Informe_${reg.sector}_${fechaLink}_${circuitoLink}.pdf`;
+                // --- LÓGICA DE NOMBRE DE ARCHIVO ACTUALIZADA ---
+                const sectorLink = reg.sector ? reg.sector.toUpperCase() : "SD";
+                const circuitoLink = reg.circuito ? reg.circuito.replace(/\s+/g, "_") : "SD";
+                const numEnergis = reg.reporte_energis || "ANTIGUO";
+                
+                // Formato exacto del app.js: Informe_SECTOR_CIRCUITO_REPORTE.pdf
+                const nombreArchivo = `Informe_${sectorLink}_${circuitoLink}_${numEnergis}.pdf`;
 
-                // URL Mapa corregida
+                // URL Mapa
                 const urlMapa = `https://www.google.com/maps/dir/${reg.gps_inicio}/${reg.gps_final}`;
 
                 tbody.innerHTML += `
                     <tr>
-                        <td>${reg.fecha_trabajo}</td>
+                        <td>
+                            ${reg.fecha_trabajo}<br>
+                            <small style="color:var(--enee-yellow); font-weight:bold;"># ${numEnergis}</small>
+                        </td>
                         <td><b>${reg.circuito}</b><br><small>${reg.zona}</small></td>
                         <td><small>S: ${reg.responsable_supervision || '---'}</small><br><small>C: ${reg.responsable_contratista || '---'}</small></td>
                         <td>B: ${reg.m_brecha}m | P: ${reg.m_poda}m</td>
@@ -151,7 +158,7 @@
                         <td>
                             <div style="display:flex; gap:15px; justify-content:center; align-items:center;">
                                 <a href="${urlMapa}" target="_blank" class="btn-map" title="Ver Trayecto">
-                                    <i class="fas fa-map-marker-alt fa-2x"></i>
+                                    <i class="fas fa-map-marked-alt fa-2x"></i>
                                 </a>
                                 <a href="${R2_URL}${nombreArchivo}" target="_blank" class="btn-pdf">
                                     <i class="fas fa-file-pdf"></i> PDF
