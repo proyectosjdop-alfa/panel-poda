@@ -96,7 +96,6 @@
 
 <script>
     const API_URL = "https://api-poda.proyectos-jdop.workers.dev/";
-    // URL Pública de R2 actualizada
     const R2_URL = "https://pub-f6627390deb6468ebff804345d5e647a.r2.dev/"; 
     let sectorSesion = "";
     let datosFiltrados = [];
@@ -127,15 +126,11 @@
                 const totalRow = Number(reg.pago_mo || 0) + Number(reg.pago_transporte || 0);
                 iT += totalRow; iP += Number(reg.m_poda || 0); iB += Number(reg.m_brecha || 0); iPostes += Number(reg.m_postes || 0);
 
-                // --- LÓGICA DE NOMBRE DE ARCHIVO ACTUALIZADA ---
-                const sectorLink = reg.sector ? reg.sector.toUpperCase() : "SD";
-                const circuitoLink = reg.circuito ? reg.circuito.replace(/\s+/g, "_") : "SD";
-                const numEnergis = reg.reporte_energis || "ANTIGUO";
-                
-                // Formato exacto del app.js: Informe_SECTOR_CIRCUITO_REPORTE.pdf
-                const nombreArchivo = `Informe_${sectorLink}_${circuitoLink}_${numEnergis}.pdf`;
+                // --- LÓGICA DE NOMBRE DE ARCHIVO ACTUALIZADA PARA LLAVE ÚNICA ---
+                const numEnergis = reg.reporte_energis || "0";
+                const nombreArchivo = `Reporte_ENERGIS_${numEnergis}.pdf`;
 
-                // URL Mapa
+                // URL Mapa Corregida
                 const urlMapa = `https://www.google.com/maps/dir/${reg.gps_inicio}/${reg.gps_final}`;
 
                 tbody.innerHTML += `
