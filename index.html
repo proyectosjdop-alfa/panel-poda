@@ -139,6 +139,11 @@
             // Mapa con chincheta (Punto A y Punto B)
             const urlMapa = `https://www.google.com/maps/dir/${reg.gps_inicio.trim()}/${reg.gps_final.trim()}`;
 
+            // --- AGREGA ESTAS 3 LÍNEAS AQUÍ ---
+            const fechaLink = reg.fecha_trabajo.replace(/-/g, ""); 
+            const circuitoLink = reg.circuito.replace(/\s+/g, "_");
+            const nombreArchivo = `Informe_${reg.sector}_${fechaLink}_${circuitoLink}.pdf`;
+            
             tbody.innerHTML += `
                 <tr>
                     <td>${reg.fecha_trabajo}</td>
