@@ -124,25 +124,27 @@
 
             datosFiltrados.reverse().forEach(reg => {
                 
-                // --- REPARACIÓN 1: Limpiamos el texto "L. 5,000" para poder sumarlo numéricamente ---
-                let moLimpio = String(reg.pago_mo || "0").replace(/[^0-9.]/g, "");
-                let transLimpio = String(reg.pago_transporte || "0").replace(/[^0-9.]/g, "");
+                // --- CORRECCIÓN DE SUMA: Quitamos comas de miles y el prefijo "L. " si existiera ---
+                let moTexto = String(reg.pago_mo || "0").replace(/L\.\s?/g, "").replace(/,/g, "").trim();
+                let transTexto = String(reg.pago_transporte || "0").replace(/L\.\s?/g, "").replace(/,/g, "").trim();
                 
-                const totalRow = Number(moLimpio) + Number(transLimpio);
+                const totalRow = Number(moTexto || 0) + Number(transTexto || 0);
                 
-                // Acumulamos los totales de los indicadores superiores
+                // Acumulamos los indicadores principales
                 iT += totalRow; 
                 iP += Number(reg.m_poda || 0); 
                 iB += Number(reg.m_brecha || 0); 
                 iPostes += Number(reg.m_postes || 0);
 
-                // --- REPARACIÓN 2: Cambiado al nombre de propiedad real de tu BD ---
-                // Nota: Si en tu base de datos se llama 'reporte_energis_numero', cámbialo aquí abajo:
+                // --- CORRECCIÓN DEL PDF: Estructura exacta igual a tu Cloudflare R2 ---
+                const sectorMayuscula = String(reg.sector || "---").toUpperCase();
                 const numEnergis = reg.numero_reporte_energis || reg.reporte_energis || "0";
-                const nombreArchivo = `Reporte_ENERGIS_${numEnergis}.pdf`;
+                
+                // Formato exacto: Registro_SECTOR_CODIGO ENERGIS.pdf
+                const nombreArchivo = `Registro_${sectorMayuscula}_${numEnergis}.pdf`;
 
-                // Reparación de Sintaxis en URL Mapa (Se agregó el $ faltante)
-                const urlMapa = `https://www.google.com/maps/dir/$/${reg.gps_inicio}/${reg.gps_final}`;
+                // Corrección del enlace del mapa dinámico
+                const urlMapa = `https://www.google.com/maps/dir/${reg.gps_inicio}/${reg.gps_final}`;
 
                 tbody.innerHTML += `
                     <tr>
@@ -154,7 +156,7 @@
                         <td><small>S: ${reg.responsable_supervision || '---'}</small><br><small>C: ${reg.responsable_contratista || '---'}</small></td>
                         <td>B: ${reg.m_brecha}m | P: ${reg.m_poda}m</td>
                         <td>${reg.m_postes || 0}</td>
-                        <td style="color:var(--success); font-weight:bold">L. ${totalRow.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}</td>
+                        <td style="color:var(--success); font-weight:bold">L. ${totalRow.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                         <td>
                             <select onchange="cambiarEstado(this)" style="background:#0f172a; color:white; border:1px solid var(--accent); padding:4px; border-radius:4px;">
                                 <option value="Generado">Generado</option>
@@ -166,7 +168,7 @@
                                 <a href="${urlMapa}" target="_blank" class="btn-map" title="Ver Trayecto">
                                     <i class="fas fa-map-marked-alt fa-2x"></i>
                                 </a>
-                                <a href="${R2_URL}${nombreArchivo}" target="_blank" class="btn-pdf">
+                                <a href="${R2_URL}${encodeURIComponent(nombreArchivo)}" target="_blank" class="btn-pdf">
                                     <i class="fas fa-file-pdf"></i> PDF
                                 </a>
                             </div>
