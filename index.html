@@ -140,8 +140,8 @@
                 const sectorMayuscula = String(reg.sector || "---").toUpperCase();
                 const numEnergis = reg.numero_reporte_energis || reg.reporte_energis || "0";
                 
-                // Formato exacto: Registro_SECTOR_CODIGO ENERGIS.pdf
-                const nombreArchivo = `Registro_${sectorMayuscula}_${numEnergis}.pdf`;
+                // Formato exacto: Informe_SECTOR_CODIGO ENERGIS.pdf
+                const nombreArchivo = `Informe_${sectorMayuscula}_${numEnergis}.pdf`;
 
                 // Corrección del enlace del mapa dinámico
                 const urlMapa = `https://www.google.com/maps/dir/${reg.gps_inicio}/${reg.gps_final}`;
