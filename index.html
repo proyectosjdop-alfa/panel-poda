@@ -123,15 +123,26 @@
             datosFiltrados = sectorSesion === "ADMIN" ? datos : datos.filter(d => d.sector.toUpperCase() === sectorSesion.toUpperCase());
 
             datosFiltrados.reverse().forEach(reg => {
-                const totalRow = Number(reg.pago_mo || 0) + Number(reg.pago_transporte || 0);
-                iT += totalRow; iP += Number(reg.m_poda || 0); iB += Number(reg.m_brecha || 0); iPostes += Number(reg.m_postes || 0);
+                
+                // --- REPARACIÓN 1: Limpiamos el texto "L. 5,000" para poder sumarlo numéricamente ---
+                let moLimpio = String(reg.pago_mo || "0").replace(/[^0-9.]/g, "");
+                let transLimpio = String(reg.pago_transporte || "0").replace(/[^0-9.]/g, "");
+                
+                const totalRow = Number(moLimpio) + Number(transLimpio);
+                
+                // Acumulamos los totales de los indicadores superiores
+                iT += totalRow; 
+                iP += Number(reg.m_poda || 0); 
+                iB += Number(reg.m_brecha || 0); 
+                iPostes += Number(reg.m_postes || 0);
 
-                // --- LÓGICA DE NOMBRE DE ARCHIVO ACTUALIZADA PARA LLAVE ÚNICA ---
-                const numEnergis = reg.reporte_energis || "0";
+                // --- REPARACIÓN 2: Cambiado al nombre de propiedad real de tu BD ---
+                // Nota: Si en tu base de datos se llama 'reporte_energis_numero', cámbialo aquí abajo:
+                const numEnergis = reg.numero_reporte_energis || reg.reporte_energis || "0";
                 const nombreArchivo = `Reporte_ENERGIS_${numEnergis}.pdf`;
 
-                // URL Mapa Corregida
-                const urlMapa = `https://www.google.com/maps/dir/${reg.gps_inicio}/${reg.gps_final}`;
+                // Reparación de Sintaxis en URL Mapa (Se agregó el $ faltante)
+                const urlMapa = `https://www.google.com/maps/dir/$/${reg.gps_inicio}/${reg.gps_final}`;
 
                 tbody.innerHTML += `
                     <tr>
@@ -143,7 +154,7 @@
                         <td><small>S: ${reg.responsable_supervision || '---'}</small><br><small>C: ${reg.responsable_contratista || '---'}</small></td>
                         <td>B: ${reg.m_brecha}m | P: ${reg.m_poda}m</td>
                         <td>${reg.m_postes || 0}</td>
-                        <td style="color:var(--success); font-weight:bold">L. ${totalRow.toLocaleString()}</td>
+                        <td style="color:var(--success); font-weight:bold">L. ${totalRow.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}</td>
                         <td>
                             <select onchange="cambiarEstado(this)" style="background:#0f172a; color:white; border:1px solid var(--accent); padding:4px; border-radius:4px;">
                                 <option value="Generado">Generado</option>
