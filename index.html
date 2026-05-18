@@ -157,6 +157,7 @@
     }
 
     // NUEVA FUNCIÓN: Trae el presupuesto anual de Google Sheets mapeado al año actual
+    // FUNCIÓN CORREGIDA: Busca por SECTOR y AÑO ACTUAL basándose en tu estructura de Google Sheets
     async function cargarPresupuestoDesdeSheets() {
         try {
             const respuesta = await fetch(SHEETS_PRESUPUESTO_URL);
@@ -168,23 +169,43 @@
             
             let presupuestoEncontrado = 0;
 
-            // Buscamos la fila que corresponda al año en curso
+            console.log("Buscando presupuesto para el Sector:", sectorSesion, "y Año:", anioActual);
+
+            // Recorremos desde la fila 1 (saltando el encabezado)
             for (let i = 1; i < filas.length; i++) {
-                if (filas[i][0] && filas[i][0].trim() === anioActual) {
-                    // Limpiamos el valor monetario de la segunda columna (L. 300,000.00 -> 300000)
-                    let valorLimpio = filas[i][1].replace(/[^0-9.]/g, "");
-                    presupuestoEncontrado = parseFloat(valorLimpio) || 0;
-                    break;
+                const fila = filas[i];
+                if (!fila || fila.length < 3) continue;
+
+                const sectorFila = fila[0] ? fila[0].trim().toUpperCase() : "";
+                const fechaFila = fila[1] ? fila[1].trim() : ""; // Formato: dia/mes/año
+                const presupuestoTexto = fila[2] ? fila[2].trim() : "0";
+
+                // Extraemos el año de la fecha (si viene como "15/05/2026", lo dividimos por "/" y tomamos el último elemento)
+                const partesFecha = fechaFila.split("/");
+                const anioFila = partesFecha.length === 3 ? partesFecha[2].trim() : "";
+
+                // Verificación para cuentas de sectores específicos
+                if (sectorSesion !== "ADMIN") {
+                    if (sectorFila === sectorSesion.toUpperCase() && anioFila === anioActual) {
+                        let valorLimpio = presupuestoTexto.replace(/[^0-9.]/g, "");
+                        presupuestoEncontrado = parseFloat(valorLimpio) || 0;
+                        break; // Encontrado, salimos del bucle
+                    }
+                } else {
+                    // Si es el ADMIN CENTRAL, sumamos los presupuestos de todos los sectores del año actual
+                    if (anioFila === anioActual) {
+                        let valorLimpio = presupuestoTexto.replace(/[^0-9.]/g, "");
+                        presupuestoEncontrado += parseFloat(valorLimpio) || 0;
+                    }
                 }
             }
 
-            // Si es cuenta ADMIN central sumamos o asignamos base, si es sector específico asignamos
             presupuestoAsignadoGlobal = presupuestoEncontrado;
-            console.log("Presupuesto anual obtenido:", presupuestoAsignadoGlobal);
+            console.log("Presupuesto final asignado al panel:", presupuestoAsignadoGlobal);
 
         } catch (error) {
             console.error("Error cargando presupuestos desde Sheets:", error);
-            presupuestoAsignadoGlobal = 0; // Backup por si falla la conexión
+            presupuestoAsignadoGlobal = 0; 
         }
     }
 
