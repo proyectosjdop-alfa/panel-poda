@@ -16,11 +16,20 @@
         .logo-bg img { height: 65px; display: block; }
         .header-container { text-align: center; margin-bottom: 30px; }
         .header-container img { height: 100px; background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
-        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        
+        /* Ajuste de rejilla para soportar las 7 tarjetas */
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 25px; }
         .metric-card { background: var(--card-bg); padding: 15px; border-radius: 12px; border-left: 5px solid var(--accent); }
         .metric-card h4 { margin: 0; font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; }
-        .metric-card p { margin: 8px 0 0; font-size: 1.3rem; font-weight: bold; color: var(--enee-yellow); }
-        .btn-excel { background: #166534; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; margin: 0 auto 20px auto; }
+        .metric-card p { margin: 8px 0 0; font-size: 1.2rem; font-weight: bold; color: var(--enee-yellow); }
+        
+        /* Contenedor y diseño de filtros */
+        .filters-container { background: var(--card-bg); padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; }
+        .filters-container div { flex: 1; min-width: 150px; display: flex; flex-direction: column; gap: 5px; }
+        .filters-container label { font-size: 0.75rem; color: #94a3b8; font-weight: bold; text-transform: uppercase; }
+        .filters-container input, .filters-container select { padding: 8px 12px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: white; font-size: 0.85rem; }
+        
+        .btn-excel { background: #166534; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
         .table-container { background: var(--card-bg); border-radius: 12px; overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; min-width: 1100px; }
         th { padding: 15px; background: #334155; color: var(--accent); font-size: 0.75rem; text-transform: uppercase; }
@@ -65,15 +74,40 @@
         <h2 id="titulo-sector" style="color:var(--enee-yellow); margin:0;">SECTOR: ---</h2>
     </div>
 
-    <button class="btn-excel" onclick="exportarExcel()"><i class="fas fa-file-excel"></i> Descargar Reporte Excel</button>
-
     <div class="metrics-grid">
         <div class="metric-card"><h4>Total Reportes</h4><p id="m-total">0</p></div>
         <div class="metric-card" style="border-left-color:#22c55e"><h4>Inversión Total</h4><p id="m-pago">L. 0</p></div>
+        <div class="metric-card" style="border-left-color:#eab308"><h4>Presupuesto Asignado</h4><p id="m-presupuesto">L. 0</p></div>
+        <div class="metric-card" style="border-left-color:#06b6d4"><h4>Capital Disponible</h4><p id="m-disponible">L. 0</p></div>
         <div class="metric-card" style="border-left-color:#f59e0b"><h4>Metros Poda</h4><p id="m-poda">0 m</p></div>
         <div class="metric-card" style="border-left-color:#a855f7"><h4>Metros Brecha</h4><p id="m-brecha">0 m</p></div>
         <div class="metric-card" style="border-left-color:#38bdf8"><h4>Postes</h4><p id="m-postes">0</p></div>
     </div>
+
+    <div class="filters-container">
+        <div>
+            <label>Fecha</label>
+            <input type="text" id="filtro-fecha" placeholder="Ej: 2026-05" oninput="filtrarTabla()">
+        </div>
+        <div>
+            <label>Circuito</label>
+            <input type="text" id="filtro-circuito" placeholder="Buscar circuito..." oninput="filtrarTabla()">
+        </div>
+        <div>
+            <label>Supervisor Resp.</label>
+            <input type="text" id="filtro-supervisor" placeholder="Nombre del supervisor..." oninput="filtrarTabla()">
+        </div>
+        <div>
+            <label>Estado</label>
+            <select id="filtro-estado" onchange="filtrarTabla()">
+                <option value="">TODOS</option>
+                <option value="GENERADO">GENERADO</option>
+                <option value="ENVIADO">ENVIADO</option>
+            </select>
+        </div>
+    </div>
+
+    <button class="btn-excel" onclick="exportarExcel()"><i class="fas fa-file-excel"></i> Descargar Reporte Excel</button>
 
     <div class="table-container">
         <table>
@@ -97,8 +131,12 @@
 <script>
     const API_URL = "https://api-poda.proyectos-jdop.workers.dev/";
     const R2_URL = "https://pub-f6627390deb6468ebff804345d5e647a.r2.dev/"; 
+    // URL CSV de tu Google Sheets (Con GID=0 para leer la pestaña de Presupuestos)
+    const SHEETS_PRESUPUESTO_URL = "https://docs.google.com/spreadsheets/d/1ltqrkfWkaJ7Y9Frik6BrIVBs46x2cOWjc_s9a9ZGegU/export?format=csv&gid=0";
+
     let sectorSesion = "";
-    let datosFiltrados = [];
+    let datosBase = []; // Almacena la descarga cruda de la API
+    let presupuestoAsignadoGlobal = 0;
 
     function validarAcceso() {
         const s = document.getElementById('select-sector').value;
@@ -108,85 +146,151 @@
             document.getElementById('login-overlay').style.display = "none";
             document.getElementById('admin-content').style.display = "block";
             document.getElementById('titulo-sector').innerText = `SECTOR: ${s}`;
-            cargarDatos();
+            inicializarPanel();
         } else { alert("Acceso denegado"); }
+    }
+
+    async function inicializarPanel() {
+        // Ejecuta la carga de datos del presupuesto y la tabla en paralelo
+        await cargarPresupuestoDesdeSheets();
+        await cargarDatos();
+    }
+
+    // NUEVA FUNCIÓN: Trae el presupuesto anual de Google Sheets mapeado al año actual
+    async function cargarPresupuestoDesdeSheets() {
+        try {
+            const respuesta = await fetch(SHEETS_PRESUPUESTO_URL);
+            const textoCSV = await respuesta.text();
+            
+            // Procesamos las filas del CSV de Sheets
+            const filas = textoCSV.split("\n").map(f => f.split(","));
+            const anioActual = new Date().getFullYear().toString(); // "2026"
+            
+            let presupuestoEncontrado = 0;
+
+            // Buscamos la fila que corresponda al año en curso
+            for (let i = 1; i < filas.length; i++) {
+                if (filas[i][0] && filas[i][0].trim() === anioActual) {
+                    // Limpiamos el valor monetario de la segunda columna (L. 300,000.00 -> 300000)
+                    let valorLimpio = filas[i][1].replace(/[^0-9.]/g, "");
+                    presupuestoEncontrado = parseFloat(valorLimpio) || 0;
+                    break;
+                }
+            }
+
+            // Si es cuenta ADMIN central sumamos o asignamos base, si es sector específico asignamos
+            presupuestoAsignadoGlobal = presupuestoEncontrado;
+            console.log("Presupuesto anual obtenido:", presupuestoAsignadoGlobal);
+
+        } catch (error) {
+            console.error("Error cargando presupuestos desde Sheets:", error);
+            presupuestoAsignadoGlobal = 0; // Backup por si falla la conexión
+        }
     }
 
     async function cargarDatos() {
         try {
             const res = await fetch(API_URL);
-            const datos = await res.json();
-            const tbody = document.getElementById('admin-tbody');
-            tbody.innerHTML = "";
+            datosBase = await res.json();
             
-            let [iT, iP, iB, iPostes] = [0, 0, 0, 0];
-            datosFiltrados = sectorSesion === "ADMIN" ? datos : datos.filter(d => d.sector.toUpperCase() === sectorSesion.toUpperCase());
+            // Aplicamos primer filtro por Sector según la sesión activa
+            if (sectorSesion !== "ADMIN") {
+                datosBase = datosBase.filter(d => d.sector.toUpperCase() === sectorSesion.toUpperCase());
+            }
 
-            datosFiltrados.reverse().forEach(reg => {
-                
-                // --- CORRECCIÓN DE SUMA: Quitamos comas de miles y el prefijo "L. " si existiera ---
-                let moTexto = String(reg.pago_mo || "0").replace(/L\.\s?/g, "").replace(/,/g, "").trim();
-                let transTexto = String(reg.pago_transporte || "0").replace(/L\.\s?/g, "").replace(/,/g, "").trim();
-                
-                const totalRow = Number(moTexto || 0) + Number(transTexto || 0);
-                
-                // Acumulamos los indicadores principales
-                iT += totalRow; 
-                iP += Number(reg.m_poda || 0); 
-                iB += Number(reg.m_brecha || 0); 
-                iPostes += Number(reg.m_postes || 0);
-
-                // --- CORRECCIÓN DEL PDF: Estructura exacta igual a tu Cloudflare R2 ---
-                const sectorMayuscula = String(reg.sector || "---").toUpperCase();
-                const numEnergis = reg.numero_reporte_energis || reg.reporte_energis || "0";
-                
-                // Formato exacto: Informe_SECTOR_CODIGO ENERGIS.pdf
-                const nombreArchivo = `Informe_${sectorMayuscula}_${numEnergis}.pdf`;
-
-                // Corrección del enlace del mapa dinámico
-                const urlMapa = `https://www.google.com/maps/dir/${reg.gps_inicio}/${reg.gps_final}`;
-
-                tbody.innerHTML += `
-                    <tr>
-                        <td>
-                            ${reg.fecha_trabajo}<br>
-                            <small style="color:var(--enee-yellow); font-weight:bold;"># ${numEnergis}</small>
-                        </td>
-                        <td><b>${reg.circuito}</b><br><small>${reg.zona}</small></td>
-                        <td><small>S: ${reg.responsable_supervision || '---'}</small><br><small>C: ${reg.responsable_contratista || '---'}</small></td>
-                        <td>B: ${reg.m_brecha}m | P: ${reg.m_poda}m</td>
-                        <td>${reg.m_postes || 0}</td>
-                        <td style="color:var(--success); font-weight:bold">L. ${totalRow.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                        <td>
-                            <select onchange="cambiarEstado(this)" style="background:#0f172a; color:white; border:1px solid var(--accent); padding:4px; border-radius:4px;">
-                                <option value="Generado">Generado</option>
-                                <option value="Enviado">Enviado</option>
-                            </select>
-                        </td>
-                        <td>
-                            <div style="display:flex; gap:15px; justify-content:center; align-items:center;">
-                                <a href="${urlMapa}" target="_blank" class="btn-map" title="Ver Trayecto">
-                                    <i class="fas fa-map-marked-alt fa-2x"></i>
-                                </a>
-                                <a href="${R2_URL}${encodeURIComponent(nombreArchivo)}" target="_blank" class="btn-pdf">
-                                    <i class="fas fa-file-pdf"></i> PDF
-                                </a>
-                            </div>
-                        </td>
-                    </tr>`;
-            });
-
-            actualizarIndicadores(datosFiltrados.length, iT, iP, iB, iPostes);
+            // Una vez descargados y asignados a datosBase, renderizamos mediante el motor de filtros
+            filtrarTabla();
         } catch (error) {
             console.error("Error cargando datos:", error);
             alert("Error al conectar con la base de datos.");
         }
     }
 
-    function cambiarEstado(el) {
+    // NUEVA FUNCIÓN: Filtra la tabla y actualiza indicadores en tiempo real
+    function filtrarTabla() {
+        const fFecha = document.getElementById('filtro-fecha').value.toLowerCase();
+        const fCircuito = document.getElementById('filtro-circuito').value.toLowerCase();
+        const fSupervisor = document.getElementById('filtro-supervisor').value.toLowerCase();
+        const fEstado = document.getElementById('filtro-estado').value.toUpperCase();
+
+        const tbody = document.getElementById('admin-tbody');
+        tbody.innerHTML = "";
+
+        let [iT, iP, iB, iPostes] = [0, 0, 0, 0];
+
+        // Filtramos sobre el arreglo base sin alterar el original descargado
+        const registrosFiltrados = datosBase.filter(reg => {
+            const matchFecha = String(reg.fecha_trabajo || "").toLowerCase().includes(fFecha);
+            const matchCircuito = String(reg.circuito || "").toLowerCase().includes(fCircuito);
+            const matchSupervisor = String(reg.responsable_supervision || "").toLowerCase().includes(fSupervisor);
+            
+            // Evaluación del estado del selector
+            const estadoRegistro = (reg.estado || "GENERADO").toUpperCase();
+            const matchEstado = fEstado === "" ? true : estadoRegistro === fEstado;
+
+            return matchFecha && matchCircuito && matchSupervisor && matchEstado;
+        });
+
+        // Construcción dinámica de las filas en la tabla
+        registrosFiltrados.slice().reverse().forEach(reg => {
+            let moTexto = String(reg.pago_mo || "0").replace(/L\.\s?/g, "").replace(/,/g, "").trim();
+            let transTexto = String(reg.pago_transporte || "0").replace(/L\.\s?/g, "").replace(/,/g, "").trim();
+            
+            const totalRow = Number(moTexto || 0) + Number(transTexto || 0);
+            
+            iT += totalRow; 
+            iP += Number(reg.m_poda || 0); 
+            iB += Number(reg.m_brecha || 0); 
+            iPostes += Number(reg.m_postes || 0);
+
+            const sectorMayuscula = String(reg.sector || "---").toUpperCase();
+            const numEnergis = reg.numero_reporte_energis || reg.reporte_energis || "0";
+            const nombreArchivo = `Informe_${sectorMayuscula}_${numEnergis}.pdf`;
+            const urlMapa = `https://www.google.com/maps/dir/${reg.gps_inicio}/${reg.gps_final}`;
+            const estadoFila = (reg.estado || "Generado");
+
+            tbody.innerHTML += `
+                <tr>
+                    <td>
+                        ${reg.fecha_trabajo}<br>
+                        <small style="color:var(--enee-yellow); font-weight:bold;"># ${numEnergis}</small>
+                    </td>
+                    <td><b>${reg.circuito}</b><br><small>${reg.zona}</small></td>
+                    <td><small>S: ${reg.responsable_supervision || '---'}</small><br><small>C: ${reg.responsable_contratista || '---'}</small></td>
+                    <td>B: ${reg.m_brecha}m | P: ${reg.m_poda}m</td>
+                    <td>${reg.m_postes || 0}</td>
+                    <td style="color:var(--success); font-weight:bold">L. ${totalRow.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                    <td>
+                        ${estadoFila.toUpperCase() === 'ENVIADO' ? 
+                            '<span class="status-locked">ENVIADO</span>' : 
+                            `<select onchange="cambiarEstado(this, '${reg.id || ''}')" style="background:#0f172a; color:white; border:1px solid var(--accent); padding:4px; border-radius:4px;">
+                                <option value="Generado" ${estadoFila === 'Generado' ? 'selected' : ''}>Generado</option>
+                                <option value="Enviado" ${estadoFila === 'Enviado' ? 'selected' : ''}>Enviado</option>
+                            </select>`
+                        }
+                    </td>
+                    <td>
+                        <div style="display:flex; gap:15px; justify-content:center; align-items:center;">
+                            <a href="${urlMapa}" target="_blank" class="btn-map" title="Ver Trayecto">
+                                <i class="fas fa-map-marked-alt fa-2x"></i>
+                            </a>
+                            <a href="${R2_URL}${encodeURIComponent(nombreArchivo)}" target="_blank" class="btn-pdf">
+                                <i class="fas fa-file-pdf"></i> PDF
+                            </a>
+                        </div>
+                    </td>
+                </tr>`;
+        });
+
+        // Actualizamos los indicadores superiores con los valores calculados
+        actualizarIndicadores(registrosFiltrados.length, iT, iP, iB, iPostes);
+    }
+
+    function cambiarEstado(el, idReg) {
         if(el.value === 'Enviado') {
             if(confirm("¿Confirmar envío? Una vez enviado no podrá regresar al estado anterior.")) {
                 el.parentElement.innerHTML = '<span class="status-locked">ENVIADO</span>';
+                // Aquí puedes añadir tu fetch POST/PUT a la API si deseas guardar el cambio de estado en BD
             } else {
                 el.value = 'Generado';
             }
@@ -195,19 +299,30 @@
 
     function actualizarIndicadores(tot, pag, pod, bre, pos) {
         document.getElementById('m-total').innerText = tot;
-        document.getElementById('m-pago').innerText = `L. ${pag.toLocaleString()}`;
+        document.getElementById('m-pago').innerText = `L. ${pag.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
         document.getElementById('m-poda').innerText = `${pod.toLocaleString()} m`;
         document.getElementById('m-brecha').innerText = `${bre.toLocaleString()} m`;
         document.getElementById('m-postes').innerText = pos;
+
+        // Renderizado del presupuesto y cálculo matemático de capital disponible
+        let disponible = presupuestoAsignadoGlobal - pag;
+
+        document.getElementById('m-presupuesto').innerText = `L. ${presupuestoAsignadoGlobal.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+        document.getElementById('m-disponible').innerText = `L. ${disponible.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+        
+        // Alerta visual si el presupuesto entra en números rojos
+        if (disponible < 0) {
+            document.getElementById('m-disponible').style.color = "#ef4444";
+        } else {
+            document.getElementById('m-disponible').style.color = "var(--success)";
+        }
     }
 
     function exportarExcel() {
-        if (datosFiltrados.length === 0) return alert("Sin datos");
-        const worksheet = XLSX.utils.json_to_sheet(datosFiltrados);
+        if (datosBase.length === 0) return alert("Sin datos");
+        const worksheet = XLSX.utils.json_to_sheet(datosBase);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Reporte");
         XLSX.writeFile(workbook, `Reporte_Poda_${sectorSesion}.xlsx`);
     }
 </script>
-</body>
-</html>
