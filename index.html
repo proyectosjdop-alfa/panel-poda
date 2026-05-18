@@ -17,17 +17,16 @@
         .header-container { text-align: center; margin-bottom: 30px; }
         .header-container img { height: 100px; background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
         
-        /* Ajuste de rejilla para soportar las 7 tarjetas */
         .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 25px; }
         .metric-card { background: var(--card-bg); padding: 15px; border-radius: 12px; border-left: 5px solid var(--accent); }
         .metric-card h4 { margin: 0; font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; }
         .metric-card p { margin: 8px 0 0; font-size: 1.2rem; font-weight: bold; color: var(--enee-yellow); }
         
-        /* Contenedor y diseño de filtros */
-        .filters-container { background: var(--card-bg); padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; }
-        .filters-container div { flex: 1; min-width: 150px; display: flex; flex-direction: column; gap: 5px; }
+        /* Contenedor y diseño de filtros mejorado */
+        .filters-container { background: var(--card-bg); padding: 15px; border-radius: 12px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; align-items: center; }
+        .filters-container div { display: flex; flex-direction: column; gap: 5px; }
         .filters-container label { font-size: 0.75rem; color: #94a3b8; font-weight: bold; text-transform: uppercase; }
-        .filters-container input, .filters-container select { padding: 8px 12px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: white; font-size: 0.85rem; }
+        .filters-container input, .filters-container select { padding: 8px 12px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: white; font-size: 0.85rem; height: 38px; box-sizing: border-box; }
         
         .btn-excel { background: #166534; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
         .table-container { background: var(--card-bg); border-radius: 12px; overflow-x: auto; }
@@ -86,16 +85,24 @@
 
     <div class="filters-container">
         <div>
-            <label>Fecha</label>
-            <input type="text" id="filtro-fecha" placeholder="Ej: 2026-05" oninput="filtrarTabla()">
+            <label>Fecha Desde</label>
+            <input type="date" id="filtro-fecha-desde" onchange="filtrarTabla()">
+        </div>
+        <div>
+            <label>Fecha Hasta</label>
+            <input type="date" id="filtro-fecha-hasta" onchange="filtrarTabla()">
         </div>
         <div>
             <label>Circuito</label>
-            <input type="text" id="filtro-circuito" placeholder="Buscar circuito..." oninput="filtrarTabla()">
+            <select id="filtro-circuito" onchange="filtrarTabla()">
+                <option value="">TODOS</option>
+            </select>
         </div>
         <div>
             <label>Supervisor Resp.</label>
-            <input type="text" id="filtro-supervisor" placeholder="Nombre del supervisor..." oninput="filtrarTabla()">
+            <select id="filtro-supervisor" onchange="filtrarTabla()">
+                <option value="">TODOS</option>
+            </select>
         </div>
         <div>
             <label>Estado</label>
@@ -131,11 +138,10 @@
 <script>
     const API_URL = "https://api-poda.proyectos-jdop.workers.dev/";
     const R2_URL = "https://pub-f6627390deb6468ebff804345d5e647a.r2.dev/"; 
-    // URL CSV de tu Google Sheets (Con GID=0 para leer la pestaña de Presupuestos)
     const SHEETS_PRESUPUESTO_URL = "https://docs.google.com/spreadsheets/d/1ltqrkfWkaJ7Y9Frik6BrIVBs46x2cOWjc_s9a9ZGegU/export?format=csv&gid=0";
 
     let sectorSesion = "";
-    let datosBase = []; // Almacena la descarga cruda de la API
+    let datosBase = []; 
     let presupuestoAsignadoGlobal = 0;
 
     function validarAcceso() {
@@ -151,54 +157,41 @@
     }
 
     async function inicializarPanel() {
-        // Ejecuta la carga de datos del presupuesto y la tabla en paralelo
         await cargarPresupuestoDesdeSheets();
         await cargarDatos();
     }
 
-    // NUEVA FUNCIÓN: Trae el presupuesto anual de Google Sheets mapeado al año actual
-    // FUNCIÓN REPARADA: Soporta comas de miles dentro del formato CSV de Google Sheets
     async function cargarPresupuestoDesdeSheets() {
         try {
             const respuesta = await fetch(SHEETS_PRESUPUESTO_URL);
             const textoCSV = await respuesta.text();
             
-            // Expresión regular avanzada para separar por comas de forma correcta, 
-            // respetando las comas de miles que vienen protegidas entre comillas.
             const lineas = textoCSV.split("\n");
             const filas = lineas.map(linea => {
-                // Esta línea separa por comas pero ignora las comas dentro de comillas
                 return linea.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
             });
 
-            const anioActual = new Date().getFullYear().toString(); // "2026"
+            const anioActual = new Date().getFullYear().toString(); 
             let presupuestoEncontrado = 0;
-
-            console.log("Buscando presupuesto corregido para:", sectorSesion, "Año:", anioActual);
 
             for (let i = 1; i < filas.length; i++) {
                 const fila = filas[i];
                 if (!fila || fila.length < 3) continue;
 
-                // Limpiamos comillas sobrantes que Sheets añade a los textos con comas
                 const sectorFila = fila[0] ? fila[0].replace(/"/g, "").trim().toUpperCase() : "";
                 const fechaFila = fila[1] ? fila[1].replace(/"/g, "").trim() : ""; 
                 const presupuestoTexto = fila[2] ? fila[2].replace(/"/g, "").trim() : "0";
 
-                // Extraemos el año de la fecha (dia/mes/año)
                 const partesFecha = fechaFila.split("/");
                 const anioFila = partesFecha.length === 3 ? partesFecha[2].trim() : "";
 
-                // Verificación para cuentas de sectores específicos
                 if (sectorSesion !== "ADMIN") {
                     if (sectorFila === sectorSesion.toUpperCase() && anioFila === anioActual) {
-                        // Quitamos todo lo que no sea número o punto decimal
                         let valorLimpio = presupuestoTexto.replace(/[^0-9.]/g, "");
                         presupuestoEncontrado = parseFloat(valorLimpio) || 0;
                         break; 
                     }
                 } else {
-                    // Si es ADMIN CENTRAL, acumulamos todo el año en curso
                     if (anioFila === anioActual) {
                         let valorLimpio = presupuestoTexto.replace(/[^0-9.]/g, "");
                         presupuestoEncontrado += parseFloat(valorLimpio) || 0;
@@ -207,8 +200,6 @@
             }
 
             presupuestoAsignadoGlobal = presupuestoEncontrado;
-            console.log("Presupuesto correctamente procesado:", presupuestoAsignadoGlobal);
-
         } catch (error) {
             console.error("Error cargando presupuestos desde Sheets:", error);
             presupuestoAsignadoGlobal = 0; 
@@ -220,12 +211,13 @@
             const res = await fetch(API_URL);
             datosBase = await res.json();
             
-            // Aplicamos primer filtro por Sector según la sesión activa
             if (sectorSesion !== "ADMIN") {
                 datosBase = datosBase.filter(d => d.sector.toUpperCase() === sectorSesion.toUpperCase());
             }
 
-            // Una vez descargados y asignados a datosBase, renderizamos mediante el motor de filtros
+            // REPARACIÓN NUEVA: Poblamos dinámicamente los dropdowns con los datos recibidos de la API
+            poblarFiltrosDesplegables();
+
             filtrarTabla();
         } catch (error) {
             console.error("Error cargando datos:", error);
@@ -233,11 +225,40 @@
         }
     }
 
-    // NUEVA FUNCIÓN: Filtra la tabla y actualiza indicadores en tiempo real
+    // NUEVA FUNCIÓN: Extrae valores únicos y crea las opciones de los menús desplegables
+    function poblarFiltrosDesplegables() {
+        const selectCircuito = document.getElementById('filtro-circuito');
+        const selectSupervisor = document.getElementById('filtro-supervisor');
+
+        // Reiniciamos conservando la opción por defecto
+        selectCircuito.innerHTML = '<option value="">TODOS</option>';
+        selectSupervisor.innerHTML = '<option value="">TODOS</option>';
+
+        // Set() extrae automáticamente los nombres únicos sin repetir
+        const circuitosUnicos = new Set();
+        const supervisoresUnicos = new Set();
+
+        datosBase.forEach(reg => {
+            if (reg.circuito) circuitosUnicos.add(reg.circuito.trim().toUpperCase());
+            if (reg.responsable_supervision) supervisoresUnicos.add(reg.responsable_supervision.trim().toUpperCase());
+        });
+
+        // Ordenamos alfabéticamente e inyectamos al HTML
+        Array.from(circuitosUnicos).sort().forEach(c => {
+            selectCircuito.innerHTML += `<option value="${c}">${c}</option>`;
+        });
+
+        Array.from(supervisoresUnicos).sort().forEach(s => {
+            selectSupervisor.innerHTML += `<option value="${s}">${s}</option>`;
+        });
+    }
+
+    // FUNCIÓN DE FILTRADO REDISEÑADA PARA RANGOS DE FECHA Y SELECTORES NATIVOS
     function filtrarTabla() {
-        const fFecha = document.getElementById('filtro-fecha').value.toLowerCase();
-        const fCircuito = document.getElementById('filtro-circuito').value.toLowerCase();
-        const fSupervisor = document.getElementById('filtro-supervisor').value.toLowerCase();
+        const fDesde = document.getElementById('filtro-fecha-desde').value; // Formato aaaa-mm-dd
+        const fHasta = document.getElementById('filtro-fecha-hasta').value; // Formato aaaa-mm-dd
+        const fCircuito = document.getElementById('filtro-circuito').value.toUpperCase();
+        const fSupervisor = document.getElementById('filtro-supervisor').value.toUpperCase();
         const fEstado = document.getElementById('filtro-estado').value.toUpperCase();
 
         const tbody = document.getElementById('admin-tbody');
@@ -245,20 +266,29 @@
 
         let [iT, iP, iB, iPostes] = [0, 0, 0, 0];
 
-        // Filtramos sobre el arreglo base sin alterar el original descargado
         const registrosFiltrados = datosBase.filter(reg => {
-            const matchFecha = String(reg.fecha_trabajo || "").toLowerCase().includes(fFecha);
-            const matchCircuito = String(reg.circuito || "").toLowerCase().includes(fCircuito);
-            const matchSupervisor = String(reg.responsable_supervision || "").toLowerCase().includes(fSupervisor);
+            // 1. Evaluación de rango de fechas corporativo
+            let matchFecha = true;
+            if (reg.fecha_trabajo) {
+                const fechaReg = reg.fecha_trabajo.trim(); // Se asume formato "AAAA-MM-DD" desde la API
+                if (fDesde && fechaReg < fDesde) matchFecha = false;
+                if (fHasta && fechaReg > fHasta) matchFecha = false;
+            }
+
+            // 2. Evaluación de menús desplegables directos
+            const circReg = (reg.circuito || "").trim().toUpperCase();
+            const matchCircuito = fCircuito === "" ? true : circReg === fCircuito;
+
+            const superReg = (reg.responsable_supervision || "").trim().toUpperCase();
+            const matchSupervisor = fSupervisor === "" ? true : superReg === fSupervisor;
             
-            // Evaluación del estado del selector
             const estadoRegistro = (reg.estado || "GENERADO").toUpperCase();
             const matchEstado = fEstado === "" ? true : estadoRegistro === fEstado;
 
             return matchFecha && matchCircuito && matchSupervisor && matchEstado;
         });
 
-        // Construcción dinámica de las filas en la tabla
+        // Renderizado dinámico de filas
         registrosFiltrados.slice().reverse().forEach(reg => {
             let moTexto = String(reg.pago_mo || "0").replace(/L\.\s?/g, "").replace(/,/g, "").trim();
             let transTexto = String(reg.pago_transporte || "0").replace(/L\.\s?/g, "").replace(/,/g, "").trim();
@@ -309,7 +339,6 @@
                 </tr>`;
         });
 
-        // Actualizamos los indicadores superiores con los valores calculados
         actualizarIndicadores(registrosFiltrados.length, iT, iP, iB, iPostes);
     }
 
@@ -317,7 +346,6 @@
         if(el.value === 'Enviado') {
             if(confirm("¿Confirmar envío? Una vez enviado no podrá regresar al estado anterior.")) {
                 el.parentElement.innerHTML = '<span class="status-locked">ENVIADO</span>';
-                // Aquí puedes añadir tu fetch POST/PUT a la API si deseas guardar el cambio de estado en BD
             } else {
                 el.value = 'Generado';
             }
@@ -331,13 +359,11 @@
         document.getElementById('m-brecha').innerText = `${bre.toLocaleString()} m`;
         document.getElementById('m-postes').innerText = pos;
 
-        // Renderizado del presupuesto y cálculo matemático de capital disponible
         let disponible = presupuestoAsignadoGlobal - pag;
 
         document.getElementById('m-presupuesto').innerText = `L. ${presupuestoAsignadoGlobal.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
         document.getElementById('m-disponible').innerText = `L. ${disponible.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
         
-        // Alerta visual si el presupuesto entra en números rojos
         if (disponible < 0) {
             document.getElementById('m-disponible').style.color = "#ef4444";
         } else {
@@ -353,3 +379,5 @@
         XLSX.writeFile(workbook, `Reporte_Poda_${sectorSesion}.xlsx`);
     }
 </script>
+</body>
+</html>
