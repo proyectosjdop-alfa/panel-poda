@@ -342,13 +342,34 @@
         actualizarIndicadores(registrosFiltrados.length, iT, iP, iB, iPostes);
     }
 
-    function cambiarEstado(el, idReg) {
-        if(el.value === 'Enviado') {
-            if(confirm("¿Confirmar envío? Una vez enviado no podrá regresar al estado anterior.")) {
-                el.parentElement.innerHTML = '<span class="status-locked">ENVIADO</span>';
-            } else {
+    async function cambiarEstado(el, idReg) {
+        if (el.value === 'Enviado') {
+            if (!confirm("¿Confirmar envío?\n\n⚠️ Una vez enviado no podrá regresar al estado anterior.")) {
+                el.value = 'Generado';
+                return;
+            }
+            el.disabled = true;
+            try {
+                const res  = await fetch(`${API_URL}actualizar-estado`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: idReg, estado: 'Enviado' })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    el.parentElement.innerHTML = '<span class="status-locked">ENVIADO</span>';
+                    // Actualizar en memoria para que el filtro lo refleje
+                    const reg = datosBase.find(r => String(r.id) === String(idReg));
+                    if (reg) reg.estado = 'Enviado';
+                } else {
+                    alert("Este estado ya está bloqueado.");
+                    el.value = 'Generado';
+                }
+            } catch(e) {
+                alert("Error de conexión al guardar el estado.");
                 el.value = 'Generado';
             }
+            el.disabled = false;
         }
     }
 
